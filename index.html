@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parag Shende</title>
+<meta name="description" content="Parag Shende, final-year CS student at VIT Pune. I build knowledge-graph and hybrid retrieval systems for LLMs and evaluate them with ablations, including the experiments that failed.">
+<meta name="author" content="Parag Shende">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Parag Shende",
+  "email": "mailto:shendeparag05@gmail.com",
+  "affiliation": {"@type": "CollegeOrUniversity", "name": "Vishwakarma Institute of Technology, Pune"},
+  "knowsAbout": ["Knowledge graphs", "GraphRAG", "Hybrid retrieval", "Retrieval evaluation", "Model Context Protocol", "LLM agents"],
+  "sameAs": ["https://github.com/parag050701", "https://linkedin.com/in/paragshende"]
+}
+</script>
+<style>
+  :root {
+    --bg: #fdfcf9;
+    --fg: #1f1f1f;
+    --muted: #5f5f5f;
+    --rule: #dcd8cf;
+    --link: #1a4fa0;
+    --code-bg: #f1eee6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15161a;
+      --fg: #e6e4df;
+      --muted: #a3a09a;
+      --rule: #34353b;
+      --link: #8db4ff;
+      --code-bg: #24252b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.65 Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 40px 0 8px; }
+  h3 { font-size: 1.02rem; margin: 26px 0 4px; }
+  p, li { margin: 0 0 12px; }
+  a { color: var(--link); }
+  nav { color: var(--muted); font-size: 0.95rem; margin-bottom: 28px; }
+  nav a { margin-right: 14px; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 36px 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.92rem; }
+  code { font: 0.86em ui-monospace, Consolas, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  ol, ul { padding-left: 22px; }
+  .table-wrap { overflow-x: auto; margin: 8px 0 16px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  tr.best td { font-weight: 700; }
+  .tag { color: var(--muted); font-size: 0.9rem; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Parag Shende</h1>
+  <nav><a href="#featured">Featured work</a><a href="#other">Other work</a><a href="#contact">Contact</a></nav>
+</header>
+
+<p>I'm a final-year Computer Engineering student at Vishwakarma Institute of Technology, Pune (B.Tech, 2023–2027, GPA 8.56/10).</p>
+
+<p>I build retrieval systems that give LLMs structured context, using knowledge graphs, hybrid search and tool servers. Then I measure whether that context actually helps. Most of what I know comes from experiments that didn't work and benchmarks that turned out to be broken. The write-up below is about one of each.</p>
+
+<p>How I work: I design the systems and run the evaluations, and much of the code is written with AI coding agents. That's a big part of why I care about evaluation: when code is cheap to write, the hard part is knowing whether it's right.</p>
+
+<p>I'm looking for research or engineering internships starting January 2027.</p>
+
+<hr>
+
+<section id="featured">
+<h2>Featured: Sanshodhak, knowledge-graph retrieval for research papers</h2>
+<p class="tag">Python · FAISS · BM25 · NetworkX · NVIDIA NIM embeddings and reranking · GROBID &nbsp;|&nbsp; Team project with Sarvadnya Bhatlawande, Akshat Shaha and Ajay Sawandkar, advised by Prof. Sangita Lade · 2025–26</p>
+
+<p>Sanshodhak answers questions over a collection of research papers. My question was narrow: <strong>does adding a knowledge graph to retrieval help, or is dense vector search already good enough?</strong></p>
+
+<h3>The system</h3>
+<p>Papers are parsed with GROBID and split into chunks: 163 papers, 4,333 chunks. Each query goes through three retrieval channels:</p>
+<ol>
+  <li><strong>BM25</strong> for exact terms such as method names, datasets and acronyms.</li>
+  <li><strong>Dense retrieval</strong> over a FAISS index of 2048-dimensional NVIDIA NIM embeddings.</li>
+  <li><strong>Graph expansion</strong> over a paper graph. Two papers are linked if one cites the other, or if their vocabularies overlap strongly (Jaccard similarity ≥ 0.30). The search starts from the papers the first two channels found and pulls in their neighbours.</li>
+</ol>
+<p>The three ranked lists are merged with reciprocal rank fusion (k = 60) and reranked with a cross-encoder. One design choice mattered: <strong>slot reservation</strong>. Plain fusion lets the two text channels crowd out graph results, because they agree with each other. So a quarter of the final top-k (at least one slot) is kept for graph-expanded chunks. Without it, the graph rarely got a chance to contribute anything.</p>
+
+<h3>Evaluation: the first benchmark was broken</h3>
+<p>The first 100-question test set gave suspiciously low scores. When I checked it question by question, <strong>50 of the 100 questions had no answer in the corpus</strong>. Their paper identifiers didn't match the indexed papers, so no system could have scored on them. I rebuilt the test set so that each question targets one specific paper that is actually in the corpus (100 questions, 100 different target papers). Every result below uses the rebuilt set.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>System</th><th class="num">P@1</th><th class="num">NDCG@10</th><th class="num">MRR</th><th class="num">Hits /100</th><th class="num">Latency</th></tr></thead>
+  <tbody>
+    <tr><td>Dense only</td><td class="num">0.800</td><td class="num">0.876</td><td class="num">0.855</td><td class="num">94</td><td class="num">0.41 s</td></tr>
+    <tr><td>BM25 + dense</td><td class="num">0.810</td><td class="num">0.876</td><td class="num">0.858</td><td class="num">93</td><td class="num">0.40 s</td></tr>
+    <tr><td>Graph</td><td class="num">0.840</td><td class="num">0.888</td><td class="num">0.877</td><td class="num">92</td><td class="num">1.51 s</td></tr>
+    <tr class="best"><td>All three + slot reservation</td><td class="num">0.860</td><td class="num">0.917</td><td class="num">0.903</td><td class="num">96</td><td class="num">1.76 s</td></tr>
+  </tbody>
+</table>
+</div>
+<p>On this benchmark the graph helps, and each added channel helps. The cost is about 4× the latency of dense-only search. Adding BM25 to dense search did almost nothing on its own, which I didn't expect.</p>
+
+<h3>The experiment I reverted</h3>
+<p>To close the gap further, I replaced simple neighbour expansion with query-biased personalised PageRank, added a graph-centrality boost after reranking, and added LLM query expansion. Each of these is a common GraphRAG technique. Together they made things worse:</p>
+<ul>
+  <li>Graph-only NDCG@10 fell from 0.891 to 0.824, and it lost 6 questions it had been answering correctly.</li>
+  <li>The full system dropped slightly (0.917 → 0.913).</li>
+  <li>Latency more than doubled (1.8 s → 4.2 s for the full system).</li>
+</ul>
+<p>Why: most of the graph's edges are citations, and PageRank rewards papers that many others cite. But each benchmark question targets one specific paper, often a peripheral one. So the centrality signal pushed the right answer down in favour of well-known hubs. Query expansion added 2–3 seconds per query and diluted questions that were already specific.</p>
+<p>I reverted all three changes. I kept the code and its unit tests, because I think they fit a different benchmark. That leads to the open question.</p>
+
+<h3>What I'd do next</h3>
+<p>The benchmark decides which graph technique looks good. With single-paper questions, centrality hurts. With multi-hop questions, whose answers span two or three connected papers, central nodes should be the right ones. The next step is a multi-hop test set, so the graph methods are judged on the kind of question they're built for. More broadly, I'd like to understand how to build evaluations that match what users actually ask, not what is easiest to generate.</p>
+<p class="small">Code: <a href="https://github.com/parag050701/Sanshodhak">github.com/parag050701/Sanshodhak</a></p>
+</section>
+
+<hr>
+
+<section id="other">
+<h2>Other work</h2>
+<ol>
+  <li>
+    <p><strong>SolarKey: monitoring platform for solar power plants</strong> <span class="tag">(Mar–Sep 2026 · Python, FastAPI, Celery, PostgreSQL, Redis, Next.js, AWS)</span><br>
+    I built this from zero to a production system monitoring three solar plants in Maharashtra, with telemetry every 5 minutes. I also built an MCP server with 9 tools that lets LLM clients query the team's root-cause-analysis engines (the engines themselves were built by a teammate). The rule I cared most about: when the data can't support an answer, the tool returns an explicit <code>CANNOT_CHECK</code> instead of a plausible-looking number, and the LLM is shown that refusal rather than given something to fill the gap with. Another lesson: four dashboards were silently showing "all clear". I traced all four to the same cause, database tables that had readers but no process writing to them. The product is behind a login, so there is no public link.</p>
+  </li>
+  <li>
+    <p><strong>Sanjaya: surveillance video as a queryable knowledge graph</strong> <span class="tag">(with Sarvadnya Bhatlawande · 1st Prize, Impetus PICT InC 2026)</span><br>
+    Hours of CCTV footage are hard to search. Sanjaya turns footage into something you can ask questions about, like "when did a person enter through the side gate?" YOLOv8 detection and tracking pick out the frames where something happens. A vision-language model describes those frames, and its descriptions are checked against what the detector actually saw, which keeps it from describing objects that aren't there. The people, objects, places and events go into a knowledge graph. Questions in plain language are answered by searching the graph and a vector index together.</p>
+  </li>
+  <li>
+    <p><strong>Comparing graph traversal strategies for knowledge retrieval</strong> <span class="tag">(course project · Python, Flask, Streamlit)</span><br>
+    BFS, DFS, Dijkstra, A*, bidirectional search and random walk with restart, run on the same knowledge graphs and benchmarked on retrieval quality and the number of nodes each one expands. <a href="https://github.com/parag050701/Comparative-Analysis-of-Graph-Traversal-Strategies-for-Intelligent-Knowledge-Retrieval">Code</a></p>
+  </li>
+</ol>
+</section>
+
+<hr>
+
+<section id="contact">
+<h2>Contact</h2>
+<ul>
+  <li>Email: <a href="mailto:shendeparag05@gmail.com">shendeparag05@gmail.com</a></li>
+  <li>GitHub: <a href="https://github.com/parag050701">github.com/parag050701</a></li>
+  <li>LinkedIn: <a href="https://linkedin.com/in/paragshende">linkedin.com/in/paragshende</a></li>
+</ul>
+</section>
+
+<footer>Last updated November 2026.</footer>
+
+</main>
+</body>
+</html>
